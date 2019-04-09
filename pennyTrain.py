@@ -107,19 +107,20 @@ vdata_gen_args = dict(
 vmdata_gen_args = dict(
                     rescale=1./255,
                      )
+bsv=2
 vimage_datagen = ImageDataGenerator(**vdata_gen_args)
 vmask_datagen = ImageDataGenerator(**vmdata_gen_args)
 vimage_generator = vimage_datagen.flow_from_directory(
     val_data_dir,
     seed=seed,
-    batch_size=bs,
+    batch_size=bsv,
     color_mode='rgb',
     target_size=(args.out_height, args.out_width))
 
 vmask_generator = vmask_datagen.flow_from_directory(
     val_mask_dir,
     seed=seed,
-    batch_size=bs,
+    batch_size=bsv,
     color_mode='grayscale',
     target_size=(args.out_height, args.out_width))
 val_generator = combine_generator(vimage_generator,vmask_generator)#zip(image_generator, mask_generator)
@@ -151,6 +152,7 @@ compression = hvd.Compression.fp16 if args.fp16_allreduce else hvd.Compression.n
 # Restore from a previous checkpoint, if initial_epoch is specified.
 # Horovod: restore on the first worker which will broadcast both model and optimizer weights
 # to other workers.
+#resume_from_epoch=0
 if resume_from_epoch > 0 and hvd.rank() == 0:
     model = hvd.load_model(args.checkpoint_format.format(epoch=resume_from_epoch),
                            compression=compression)
@@ -171,9 +173,9 @@ else:
     #model = keras.models.Model.from_config(model_config)
 
     # Horovod: adjust learning rate based on number of GPUs.
-    #opt = keras.optimizers.SGD(lr=args.base_lr * hvd.size(),
-    #                           momentum=args.momentum)
-    optimizer = Adam(lr=args.learning_rate*hvd.size())
+    optimizer = keras.optimizers.SGD(lr=args.base_lr * hvd.size(),
+                               momentum=args.momentum)
+    #optimizer = Adam(lr=args.learning_rate*hvd.size())
                         #momentum=args.momentum)
     # Horovod: add Horovod Distributed Optimizer.
     optimizer = hvd.DistributedOptimizer(optimizer, compression=compression)
@@ -203,7 +205,13 @@ callbacks = [
     hvd.callbacks.LearningRateScheduleCallback(start_epoch=args.warmup_epochs, end_epoch=30, multiplier=1.),
     hvd.callbacks.LearningRateScheduleCallback(start_epoch=30, end_epoch=60, multiplier=1e-1),
     hvd.callbacks.LearningRateScheduleCallback(start_epoch=60, end_epoch=80, multiplier=1e-2),
-    hvd.callbacks.LearningRateScheduleCallback(start_epoch=80, multiplier=1e-3),
+    #hvd.callbacks.LearningRateScheduleCallback(start_epoch=80, multiplier=1.),
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=80, end_epoch=100, multiplier=1.),
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=100, end_epoch=130, multiplier=1e-2),
+    #hvd.callbacks.LearningRateScheduleCallback(start_epoch=160, multiplier=1e-1),
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=130, end_epoch=160, multiplier=1e-3),
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=160, end_epoch=190, multiplier=1e-1),
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=190, multiplier=1e-3),
 ]
 
 # Horovod: save checkpoints only on the first worker to prevent other workers from corrupting them.
@@ -216,18 +224,18 @@ if hvd.rank() == 0:
 # Over-sampling of validation data helps to increase probability that every validation
 # example will be evaluated.
 model.fit_generator(train_generator,
-                    steps_per_epoch=600 // hvd.size(),
+                    steps_per_epoch=3954 // hvd.size(),
                     callbacks=callbacks,
                     epochs=args.epochs,
                     verbose=verbose,
                     workers=6,
                     initial_epoch=resume_from_epoch,
                     validation_data=val_generator,
-                    validation_steps=3 * 264 // hvd.size())
+                    validation_steps=(264/bsv) // hvd.size())
 
 
 # Evaluate the model on the full data set.
-score = hvd.allreduce(model.evaluate_generator(test_iter, len(test_iter), workers=6))
+score = hvd.allreduce(model.evaluate_generator(val_generator, len(val_generator), workers=6))
 if verbose:
     print('Test loss:', score[0])
     print('Test accuracy:', score[1])

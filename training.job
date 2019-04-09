@@ -5,7 +5,7 @@
 #
 # Name your job to make it easier for you to track
 #
-#SBATCH --job-name=PDVIS
+#SBATCH --job-name=3nodes
 #
 # Set your error and output files
 #
@@ -36,16 +36,16 @@ source activate distributedLearning
 
 time mpirun -np $SLURM_NTASKS -bind-to none -map-by slot -mca pml ob1 -mca btl_tcp_if_include ib0 python /data/user/wsmonroe/MetalsGroup/pennyProject/code/horovodUnet/pennyTrain.py\
   --seed=80\
-  --dataset_dir='/data/user/wsmonroe/MetalsGroup/ultrasoundSkullSegmentation/resizedTraining'\
+  --dataset_dir='/data/user/wsmonroe/MetalsGroup/pennyProject/pennyData/TrainingSet/preprocessed'\
   --network='resnet50'\
   --preprocessing_function='tf'\
-  --learning_rate=0.00001\
+  --learning_rate=0.001\
   --loss_function='bce_dice'\
   --train_data_dir_name='data'\
-  --val_data_dir_name='data'\
-  --val_mask_dir='labels'\
+  --val_data_dir_name='validation/data'\
+  --val_mask_dir='validation/labels'\
   --train_mask_dir='labels'\
   --input_height=256\
   --input_width=256\
-  --epochs=100\
-  --batch_size=9
+  --epochs=500\
+  --batch_size=6

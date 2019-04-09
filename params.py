@@ -23,7 +23,7 @@ arg('--out_width', type=int, default=256)
 arg('--input_width', type=int, default=256)
 arg('--input_height', type=int, default=256)
 arg('--use_crop', type=distutils.util.strtobool, default='true')
-arg('--learning_rate', type=float, default=0.00001)
+arg('--learning_rate', type=float, default=0.0125)
 arg('--batch_size', type=int, default=1)
 arg('--val-batch-size', type=int, default=4,
                     help='input batch size for validation')

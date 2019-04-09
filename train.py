@@ -94,14 +94,14 @@ def main():
         seed=seed,
         batch_size=bs,
         color_mode='rgb',
-        target_size=(256,256))
+        target_size=(512,512))
 
     mask_generator = mask_datagen.flow_from_directory(
         '/data/user/wsmonroe/MetalsGroup/pennyProject/pennyData/TrainingSet/preprocessed/labels',
         seed=seed,
         batch_size=bs,
         color_mode='grayscale',
-        target_size=(256,256))
+        target_size=(512,512))
 
     def combine_generator(gen1,gen2):
         while True:
@@ -127,14 +127,14 @@ def main():
         seed=seed,
         batch_size=bs,
         color_mode='rgb',
-        target_size=(256,256))
+        target_size=(512,512))
 
     vmask_generator = vmask_datagen.flow_from_directory(
         '/data/user/wsmonroe/MetalsGroup/pennyProject/pennyData/TrainingSet/preprocessed/validation/labels',
         seed=seed,
         batch_size=bs,
         color_mode='grayscale',
-        target_size=(256,256))
+        target_size=(512,512))
     val_generator = combine_generator(vimage_generator,vmask_generator)#zip(image_generator, mask_generator)
     '''train_generator = build_batch_generator(
         train_ids,
